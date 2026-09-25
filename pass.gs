@@ -30,7 +30,34 @@ function doGet(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
   }
+function checkAndInitSheet() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  
+  let sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAME);
+  }
+  // เพิ่ม 'fiscal_year' เข้าไปที่ส่วนท้ายสุดของ Headers
+  const headers = [
+    'employee_id', 'full_name', 'school_name', 'position', 'academic_rank', 
+    'rank', 'position_number', 'round_name', 'previous_salary', 'calculation_base', 
+    'promotion_percentage', 'promotion_amount', 'special_remuneration', 'new_salary', 
+    'status', 'reason', 'director_name', 'document_date', 'ack_status', 'ack_time', 'satisfaction', 'fiscal_year'
+  ];
+  
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+         .setBackground('#1a237e').setFontColor('#ffffff').setFontWeight('bold');
+    sheet.setFrozenRows(1);
+  }
 
+  let setSheet = ss.getSheetByName(SETTINGS_SHEET);
+  if (!setSheet) {
+    setSheet = ss.insertSheet(SETTINGS_SHEET);
+    setSheet.getRange(1, 1, 1, 2).setValues([['Key', 'Value']])
+            .setBackground('#4285f4').setFontColor('#ffffff').setFontWeight('bold');
+  }
+}
   // 2. ถ้าเปิดใช้งานผ่านลิงก์ GAS ปกติ (คืนค่าเป็นหน้าเว็บ HTML ตามโค้ดเดิมของคุณ)
   const html = HtmlService.createTemplateFromFile('Index').evaluate();
   html.setTitle('ระบบแจ้งผลเลื่อนเงินเดือน โรงเรียนบ้านคุ้ม(ประสารราษฎร์วิทยา)');
