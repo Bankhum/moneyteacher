@@ -276,10 +276,140 @@
             <h3 style="margin-top:0; color: var(--primary); font-size: 16px;">📈 กราฟเส้นโค้งแนวโน้มการได้รับเงินเดือนตามวิทยฐานะ</h3>
             <div style="height: 300px; position: relative;">
               <canvas id="salaryChart"></canvas>
-           <!-- 2. โค้ด JavaScript หลักของระบบเริ่มต้นที่นี่ -->
+            </div>
+          </div>
+
+          <div style="background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+              <h3 style="margin:0; color: var(--primary); font-size: 16px;">ตารางข้อมูลเงินเดือนบุคลากร</h3>
+              <div>
+                <label style="font-weight:bold; margin-right: 10px;">จัดเรียงข้อมูล:</label>
+                <select id="sortFilter" style="width: auto; padding: 8px 15px; margin:0;" onchange="renderDashboard()">
+                  <option value="default">ค่าเริ่มต้น</option>
+                  <option value="prev_asc">เงินเดือนเดิม (น้อยไปมาก)</option>
+                  <option value="perc_desc">ร้อยละที่ได้เลื่อน (มากไปน้อย)</option>
+                  <option value="new_desc">เงินเดือนใหม่ (มากไปน้อย)</option>
+                </select>
+              </div>
+            </div>
+            <div style="max-height: 50vh; overflow-y: auto; border: 1px solid #eee;">
+              <table class="status-table" id="statusTable">
+                <thead><tr><th>รหัสประจำตัว</th><th>ชื่อ-สกุล (คลิกเพื่อดูใบ)</th><th>ปีงบฯ / รอบ</th><th>เงินเดือนเดิม</th><th>% เลื่อน</th><th>เงินเดือนใหม่</th><th>สถานะ</th><th>ความพึงพอใจ</th><th>เวลาเข้าดู</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-form" class="tab-pane">
+           <div style="background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); max-width: 1000px; margin: 0 auto;">
+            <h3 style="color: var(--primary); margin-top:0; border-bottom: 2px solid #f0f2f5; padding-bottom:10px;">เพิ่ม/แก้ไข ข้อมูลการเลื่อนเงินเดือน</h3>
+            <form id="adminDataForm">
+              <div class="form-grid">
+                <div class="form-group"><label>รหัสประจำตัว</label><input type="text" id="f_id" required></div>
+                <div class="form-group"><label>ชื่อ-นามสกุล</label><input type="text" id="f_name" required></div>
+                
+                <div class="form-group"><label>ปีงบประมาณ (พ.ศ.)</label><input type="number" id="f_fiscal_year" placeholder="เช่น 2569" required></div>
+                <div class="form-group"><label>ครั้งที่เลื่อน</label>
+                  <select id="f_round">
+                    <option value="ครั้งที่ 1 (1 เมษายน)">ครั้งที่ 1 (1 เมษายน)</option>
+                    <option value="ครั้งที่ 2 (1 ตุลาคม)">ครั้งที่ 2 (1 ตุลาคม)</option>
+                  </select>
+                </div>
+
+                <div class="form-group"><label>โรงเรียน</label> 
+                  <select id="f_school">
+                    <option value="โรงเรียนบ้านคุ้ม(ประสารราษฎร์วิทยา)">โรงเรียนบ้านคุ้ม(ประสารราษฎร์วิทยา)</option>
+                    <option value="โรงเรียนบ้านวังดิน (วังดินราษฎร์บำรุง)">โรงเรียนบ้านวังดิน (วังดินราษฎร์บำรุง)</option>
+
+                  </select>
+                </div>
+                <div class="form-group"><label>ตำแหน่ง</label><input type="text" id="f_pos" value="ครู"></div>
+                <div class="form-group"><label>วิทยฐานะ</label>
+                  <select id="f_acad">
+                    <option value="ไม่มีวิทยฐานะ">ไม่มีวิทยฐานะ</option>
+                    <option value="ครูชำนาญการ">ครูชำนาญการ</option>
+                    <option value="ครูชำนาญการพิเศษ">ครูชำนาญการพิเศษ</option>
+                    <option value="ครูเชี่ยวชาญ">ครูเชี่ยวชาญ</option>
+                    <option value="ครูเชี่ยวชาญพิเศษ">ครูเชี่ยวชาญพิเศษ</option>
+                  </select>
+                </div>
+                <div class="form-group"><label>อันดับ</label>
+                  <select id="f_rank">
+                    <option value="คศ.1">คศ.1</option>
+                    <option value="คศ.2">คศ.2</option>
+                    <option value="คศ.3">คศ.3</option>
+                    <option value="คศ.4">คศ.4</option>
+                    <option value="คศ.5">คศ.5</option>
+                  </select>
+                </div>
+                <div class="form-group"><label>เลขที่ตำแหน่ง</label><input type="text" id="f_pos_num"></div>
+                <div class="form-group"><label>เงินเดือนเดิม</label><input type="number" id="f_prev"></div>
+                <div class="form-group"><label>ฐานในการคำนวณ</label><input type="number" id="f_base"></div>
+                <div class="form-group"><label>ร้อยละที่ได้เลื่อน</label><input type="text" id="f_perc"></div>
+                <div class="form-group"><label>จำนวนเงินที่ได้เลื่อน</label><input type="number" id="f_amt"></div>
+                <div class="form-group"><label>รวมเงินเดือนใหม่</label><input type="number" id="f_new"></div>
+              </div>
+              
+              <div class="form-group" style="margin-top: 15px;">
+                <label>วันที่แจ้งผล (วันเวลาปัจจุบันอัตโนมัติ)</label>
+                <input type="text" id="f_date" readonly style="background: #eee;">
+              </div>
+              <div class="form-group">
+                <label>ผลการพิจารณา</label>
+                <div class="radio-group">
+                  <label><input type="radio" name="f_status" value="มีคุณสมบัติครบ/ให้เลื่อนเงินเดือน" checked> มีคุณสมบัติครบ/ให้เลื่อนเงินเดือน</label>
+                  <label><input type="radio" name="f_status" value="ขาดคุณสมบัติ/ไม่ให้เลื่อนเงินเดือน"> ขาดคุณสมบัติ/ไม่ให้เลื่อนเงินเดือน</label>
+                </div>
+              </div>
+              <div class="form-group"><label>คำอธิบาย / ข้อสังเกต</label><textarea id="f_reason" rows="3" placeholder="ระบุเหตุผล (ถ้ามี)"></textarea></div>
+              <div style="text-align: center; margin-top: 30px;">
+                <button type="button" class="btn-main" onclick="submitAdminForm()" style="width: auto; padding: 15px 50px; font-size: 20px;">💾 บันทึก / อัพเดทข้อมูล</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div id="tab-settings" class="tab-pane">
+          <div style="background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); max-width: 700px; margin: 0 auto;">
+            <h3 style="color: var(--primary); margin-top:0;">ตั้งค่าระบบรายงาน (บันทึกรูปลง Google Drive)</h3>
+            
+            <div class="form-group" style="margin-bottom: 25px;">
+              <label>ชื่อ-นามสกุลผู้บริหาร (สำหรับประทับในรายงาน)</label>
+              <input type="text" id="set_director" placeholder="เช่น นายสมชาย ใจดี">
+            </div>
+            <div class="form-group" style="margin-bottom: 25px;">
+              <label>อัปโหลด Logo โรงเรียน (ส่วนหัวรายงาน)</label>
+              <input type="file" accept="image/png, image/jpeg" onchange="previewFile(this, 'preview_logo', 'logo')">
+              <img id="preview_logo" class="img-preview" src="">
+            </div>
+            <div class="form-group" style="margin-bottom: 25px;">
+              <label>อัปโหลดลายเซ็นผู้บริหาร (พื้นหลังใส .PNG จะดีที่สุด)</label>
+              <input type="file" accept="image/png, image/jpeg" onchange="previewFile(this, 'preview_sig', 'sig')">
+              <img id="preview_sig" class="img-preview" src="">
+            </div>
+            <div class="form-group">
+              <label>อัปโหลดตราปั๊มโรงเรียน (แสดงผลทับลายเซ็น)</label>
+              <input type="file" accept="image/png, image/jpeg" onchange="previewFile(this, 'preview_stamp', 'stamp')">
+              <img id="preview_stamp" class="img-preview" src="" style="border-radius:50%;">
+            </div>
+            <div style="margin-top:30px; text-align: center; padding-top: 20px; border-top: 1px solid #eee;">
+              <button onclick="saveSettings()" style="background:var(--success); color:white; padding:12px 35px; border-radius:8px; font-size:18px;">💾 บันทึกการตั้งค่าเข้าระบบ</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- 1. นำเข้าไลบรารี SweetAlert2 (ส่วนนี้ห้ามลบ) -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <!-- 2. โค้ด JavaScript หลักของระบบเริ่มต้นที่นี่ -->
   <script>
-    // 🛑 นำ Web App URL ของ Google Apps Script มาใส่ในเครื่องหมายคำพูดด้านล่างนี้
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbykM35MuBsOY9RLPn5AClqHNuPcCXD7Ph5P10_bGiP967kgRIj6va8hAr5fCf9lo9Eb9g/exec";
+    // 🛑 นำ Web App URL ของ Google Apps Script มาใส่แล้วให้เรียบร้อย
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxB77GkAm3fskmSki4XXes5ZIWTsETWNgKonHsMb9mK2KUaB9PFcjWe9KE6Ewh-u1zlOw/exec";
 
     let currentId = '';
     let currentRound = '';
@@ -314,7 +444,7 @@
       return res.data;
     }
 
-    // ---------- ส่วนล็อกอินเข้าสู่ระบบ (แก้ไขแล้ว) ----------
+    // ---------- ส่วนล็อกอินเข้าสู่ระบบ ----------
     function showAdminLogin() {
       Swal.fire({
         title: 'ผู้ดูแลระบบ', background: '#121212', color: '#ffffff',
@@ -328,7 +458,6 @@
         if (result.isConfirmed) {
           Swal.fire({ title: 'กำลังตรวจสอบ...', didOpen: () => Swal.showLoading() });
           
-          // เรียกใช้งาน API แทน google.script.run
           callAPI('verifyAdminLogin', { user: result.value.user, pass: result.value.pass })
             .then(() => { Swal.close(); openAdminModal(); })
             .catch(err => Swal.fire({ icon: 'error', title: 'ผิดพลาด', text: err.message, background: '#121212', color: '#ff4444' }));
@@ -336,13 +465,12 @@
       });
     }
 
-    // ---------- ส่วนค้นหาข้อมูลบุคลากร (แก้ไขแล้ว) ----------
+    // ---------- ส่วนค้นหาข้อมูลบุคลากร ----------
     document.getElementById('searchForm').onsubmit = (e) => {
       e.preventDefault();
       const id = document.getElementById('employeeId').value;
       Swal.fire({ title: 'กำลังค้นหา...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
       
-      // เรียกใช้งาน API
       callAPI('searchEmployee', { id: id })
         .then(response => {
           Swal.close();
@@ -440,7 +568,7 @@
         document.getElementById('resultModal').style.display = 'flex';
     }
 
-    // ---------- ส่วนการประเมินรับทราบผล (แก้ไขแล้ว) ----------
+    // ---------- ส่วนการประเมินรับทราบผล ----------
     document.getElementById('ackBtn').onclick = () => {
       Swal.fire({
         title: 'ประเมินความพึงพอใจ', text: 'โปรดเลือกความรู้สึกของท่านที่มีต่อผลการพิจารณา', icon: 'question',
@@ -516,7 +644,6 @@
         });
     }
 
-    // สคริปต์ส่วนเรนเดอร์ตารางและกราฟ (ไม่มีการเชื่อมต่อ GAS คงไว้เหมือนเดิม)
     function renderDashboard() {
       const fYear = document.getElementById('dashFiscalYear').value;
       const fRound = document.getElementById('dashRound').value;
@@ -634,7 +761,6 @@
 
       Swal.fire({title: 'กำลังบันทึก...', didOpen:()=>Swal.showLoading()});
       
-      // ส่งข้อมูลผ่าน API
       callAPI('saveEmployeeData', { data: data })
         .then(msg => {
           Swal.fire('สำเร็จ', msg, 'success');
@@ -694,3 +820,5 @@
         .catch(err => Swal.fire('ผิดพลาด', err.message, 'error'));
     }
   </script>
+</body>
+</html>
