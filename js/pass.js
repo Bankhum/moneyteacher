@@ -4,15 +4,39 @@ const SETTINGS_SHEET = 'Settings';
 const ADMIN_PASS = 'Bankhum36112361'; 
 const DRIVE_FOLDER_ID = '1BzUqviInILFLDgqQnKvxj27mKtOMpU14'; 
 
-function doGet(e) {
-  checkAndInitSheet();
-  const html = HtmlService.createTemplateFromFile('Index').evaluate();
-  html.setTitle('ระบบแจ้งผลเลื่อนเงินเดือน โรงเรียนบ้านคุ้ม(ประสารราษฎร์วิทยา)');
-  html.setFaviconUrl('https://img2.pic.in.th/unnamed-4051717258f61fe927.png') 
-  html.addMetaTag('viewport', 'width=device-width, initial-scale=1');
-  return html;
+// 1. ฟังก์ชันรับส่งข้อมูลแบบ API (ใช้ทำงานร่วมกับ GitHub)
+function doPost(e) {
+  try {
+    checkAndInitSheet(); // ตรวจสอบและสร้างชีตอัตโนมัติหากยังไม่มี
+    const params = JSON.parse(e.postData.contents);
+    const action = params.action;
+    let result = {};
+
+    if (action === 'verifyAdminLogin') result = verifyAdminLogin(params.user, params.pass);
+    else if (action === 'searchEmployee') result = searchEmployee(params.id);
+    else if (action === 'acknowledgeResult') result = acknowledgeResult(params.id, params.round, params.year, params.rating);
+    else if (action === 'getAdminSettingsPreview') result = getAdminSettingsPreview();
+    else if (action === 'getAdminDashboardData') result = getAdminDashboardData();
+    else if (action === 'saveEmployeeData') result = saveEmployeeData(params.data);
+    else if (action === 'saveAdminSettings') result = saveAdminSettings(params.payload);
+    else throw new Error('ไม่พบคำสั่ง ' + action);
+
+    return ContentService.createTextOutput(JSON.stringify({ status: 'success', data: result }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: error.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
+// อนุญาตให้ทดสอบการเข้าถึง URL ผ่านเบราว์เซอร์ได้
+function doGet(e) {
+  return ContentService.createTextOutput(JSON.stringify({ status: 'success', message: 'API is running properly.' }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// 2. ฟังก์ชันตรวจสอบฐานข้อมูล
 function checkAndInitSheet() {
   const ss = SpreadsheetApp.openById(SHEET_ID);
   
@@ -20,7 +44,6 @@ function checkAndInitSheet() {
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_NAME);
   }
-  // เพิ่ม 'fiscal_year' เข้าไปที่ส่วนท้ายสุดของ Headers เพื่อความเข้ากันได้กับโครงสร้างเดิม
   const headers = [
     'employee_id', 'full_name', 'school_name', 'position', 'academic_rank', 
     'rank', 'position_number', 'round_name', 'previous_salary', 'calculation_base', 
@@ -42,6 +65,7 @@ function checkAndInitSheet() {
   }
 }
 
+// 3. ฟังก์ชันการทำงานหลังบ้านทั้งหมด
 function verifyAdminLogin(username, password) {
   if (password === ADMIN_PASS) return true;
   throw new Error('รหัสผ่านไม่ถูกต้อง');
@@ -137,7 +161,6 @@ function searchEmployee(employeeId) {
     const data = sheet.getDataRange().getDisplayValues();
     const headers = data.shift(); 
     
-    // ค้นหาทุกรายการที่ตรงกับรหัสพนักงาน (รองรับหลายปีงบประมาณและรอบ)
     const rows = data.filter(r => r[0] == employeeId);
     if (rows.length === 0) throw new Error('ไม่พบข้อมูลสำหรับรหัสประจำตัวนี้');
 
@@ -150,7 +173,6 @@ function searchEmployee(employeeId) {
     });
 
     const settings = getAdminSettingsPreview();
-    
     return { records: records, settings: settings };
   } catch (error) {
     throw new Error(error.message);
@@ -200,7 +222,6 @@ function saveEmployeeData(formData) {
   newRow[16] = settings.directorName || ''; 
 
   let foundIndex = -1;
-  // ค้นหาโดยใช้ รหัสพนักงาน + รอบ + ปีงบประมาณ เพื่อแยกแยะรายการที่ซ้ำซ้อนในต่างวาระ
   for (let i = 1; i < data.length; i++) {
     if (data[i][0] == formData.employee_id && data[i][7] == formData.round_name && data[i][21] == formData.fiscal_year) {
       foundIndex = i + 1;
