@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <title>ระบบแจ้งผล การพิจารณาเลื่อนเงินเดือน</title> 
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Sarabun:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root { --primary: #1a237e; --accent: #4285f4; --success: #2e7d32; --bg: #f4f7f6; --danger: #d32f2f; --orange: #e65100; --pink: #e91e63; }
+    * { box-sizing: border-box; }
+    
+    body { 
+      font-family: 'Kanit', sans-serif; 
+      background: linear-gradient(135deg, #1a237e 0%, #e91e63 50%, #fb8c00 100%);
+      background-attachment: fixed; margin: 0; display: flex; flex-direction: column; min-height: 100vh; 
+    }
+    
+    .main-container { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .search-container { background: rgba(255, 255, 255, 0.95); padding: 40px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); text-align: center; width: 100%; max-width: 480px; backdrop-filter: blur(10px); }
+    
+    input[type="text"], input[type="number"], select, textarea, input[type="file"] { width: 100%; padding: 12px 15px; margin: 8px 0 15px; border: 1.5px solid #e0e0e0; border-radius: 8px; font-size: 16px; font-family: 'Kanit'; outline: none; transition: 0.3s; background: #fff;}
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+    input[type="file"] { padding: 9px 15px; cursor: pointer; }
+    
+    button { cursor: pointer; border: none; border-radius: 8px; transition: 0.3s; font-family: 'Kanit'; font-weight: 500; }
+    .btn-main { width: 100%; padding: 14px; background: var(--primary); color: #fff; font-size: 18px; }
+    .btn-main:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(26,35,126,0.3); }
+
+    .fab { position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; background: rgba(26, 35, 126, 0.9); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 100; cursor: pointer; transition: 0.3s; backdrop-filter: blur(5px); }
+    .fab:hover { transform: scale(1.1); background: rgba(26, 35, 126, 1); }
+    .neon-input { width: 85%; padding: 12px; margin: 10px auto; display: block; background: #1a1a1a; border: 1px solid #00e5ff; color: #00e5ff; border-radius: 8px; text-shadow: 0 0 5px #00e5ff; box-shadow: 0 0 8px rgba(0, 229, 255, 0.4); outline: none; font-family: 'Kanit', sans-serif; font-size: 16px; }
+
+    /* Modals */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+    #resultModal { z-index: 1050; } 
+    #selectRoundModal { z-index: 1060; }
+    
+    .modal-content { background: #fff; width: 100%; max-width: 800px; border-radius: 12px; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; }
+    .modal-overlay.fullscreen { padding: 0; }
+    .modal-overlay.fullscreen .modal-content { max-width: 100vw; height: 100vh; max-height: 100vh; border-radius: 0; }
+    .modal-header { padding: 20px 25px; background: var(--primary); color: white; display: flex; justify-content: space-between; align-items: center; }
+    .modal-body { padding: 25px; flex: 1; overflow-y: auto; }
+    .modal-footer { padding: 15px 25px; text-align: right; background: #f9f9f9; border-top: 1px solid #eee; }
+    
+    /* Tabs & Dash */
+    .tab-nav { display: flex; border-bottom: 2px solid #eee; margin-bottom: 20px; }
+    .tab-btn { background: none; color: #666; padding: 12px 25px; font-size: 18px; border-radius: 0; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; animation: fadeIn 0.4s; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .dash-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin-bottom: 20px; }
+    .dash-card { background: #fff; padding: 15px; border-radius: 10px; border-left: 5px solid var(--accent); box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    .dash-card.money { border-left-color: #fbbc05; background: #fffdf5; }
+    .dash-card small { color: #888; font-size: 13px; }
+    .dash-card div { font-size: 20px; font-weight: 600; color: var(--primary); margin-top: 5px; }
+    
+    .status-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .status-table th { background: #e0e0e0; color: #333; position: sticky; top: 0; }
+    .status-table th, .status-table td { border: 1px solid #ddd; padding: 12px 10px; text-align: left; }
+    .status-table a { color: var(--primary); font-weight: bold; text-decoration: none; cursor: pointer; }
+    .status-table a:hover { text-decoration: underline; color: var(--accent); }
+    
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; }
+    .form-group label { font-size: 15px; color: #333; font-weight: 600; }
+    .radio-group { display: flex; gap: 20px; margin: 10px 0 20px; padding: 15px; border: 1px solid #e0e0e0; border-radius: 8px; background: #fafafa; }
+    
+    /* Report Info Table */
+    .report-info-container { background: #f9fbfd; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px 20px; margin-bottom: 20px; }
+    .report-info-table { width: 100%; border-collapse: collapse; font-size: 16px; }
+    .report-info-table td { padding: 6px 10px; border-bottom: 1px dashed #e2e8f0; }
+    .report-info-table tr:last-child td { border-bottom: none; }
+    .lbl-title { color: var(--primary); font-weight: 700; width: 120px; display: inline-block; }
+    .lbl-value { color: #212529; font-weight: 500; font-size: 17px; }
+    
+    /* Salary Table */
+    .salary-table { width: 100%; border-collapse: collapse; margin: 10px 0 20px; font-family: 'Sarabun', serif; font-size: 16px; }
+    .salary-table th, .salary-table td { border: 1px solid #333; padding: 12px; }
+    .salary-table th { background: #e0e0e0; font-weight: bold; }
+    
+    .highlight-prev { color: var(--danger); font-weight: 700; }
+    .highlight-perc { color: var(--orange); font-weight: 700; }
+    .highlight-amt { color: var(--success); font-weight: 700; }
+    .highlight-new { color: #0d47a1; font-weight: 700; font-size: 26px; line-height: 1; }
+
+    /* PDPA Note */
+    .pdpa-note { color: var(--danger); font-size: 12px; margin-top: 25px; font-weight: bold; text-align: center; border-top: 1px dashed #ddd; padding-top: 15px; }
+
+    /* Footer */
+    .main-footer { text-align: center; padding: 20px; color: rgba(255,255,255,0.9); font-size: 14px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); width: 100%; }
+    .img-preview { max-width: 200px; max-height: 120px; border: 1px solid #ddd; border-radius: 8px; display: none; margin-top: 10px; padding: 5px; background: #fff; }
+
+    @keyframes pulse-gold {
+      0% { box-shadow: 0 0 0 0 rgba(251, 140, 0, 0.7); transform: scale(1); }
+      70% { box-shadow: 0 0 0 15px rgba(251, 140, 0, 0); transform: scale(1.05); }
+      100% { box-shadow: 0 0 0 0 rgba(251, 140, 0, 0); transform: scale(1); }
+    }
+    .btn-animate { animation: pulse-gold 2s infinite; font-weight: bold !important; border: 2px solid #fff !important; }
+
+    @media print {
+      @page { size: A4 portrait; margin: 10mm; }
+      body { background: #fff !important; }
+      .main-container, .fab, .modal-footer, .modal-header, .main-footer, #adminModal, #selectRoundModal { display: none !important; }
+      #resultModal { position: absolute !important; top: 0; left: 0; width: 100%; display: block !important; background: none !important; padding: 0 !important; }
+      #resultModal .modal-content { box-shadow: none !important; border: none !important; width: 100% !important; max-height: none !important; margin: 0 !important; }
+      #resultModal .modal-body { padding: 0 !important; }
+      .report-info-container { border: none; background: transparent; padding: 0; margin-bottom: 10px; }
+      .report-info-table td { border-bottom: none; padding: 4px 10px; font-size: 15px; }
+      .salary-table { font-size: 15px; margin-bottom: 10px; }
+      .salary-table th, .salary-table td { padding: 8px; border: 1px solid #000 !important; }
+      .highlight-prev { color: var(--danger) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .highlight-perc { color: var(--orange) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .highlight-amt { color: var(--success) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .highlight-new { color: #0d47a1 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .pdpa-note { color: var(--danger) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin-top: 15px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="main-container">
+    <div class="search-container">
+      <h2 style="color: var(--primary); margin-top:0;">ระบบแจ้งผล การพิจารณาเลื่อนเงินเดือน โรงเรียนบ้านคุ้ม(ประสารราษฎร์วิทยา)</h2> 
+      <p style="color: #666; margin-bottom: 25px;">กรุณากรอกเลขบัตรประจำตัวประชาชน เพื่อดูผลการพิจารณา</p>
+      <form id="searchForm">
+        <input type="text" id="employeeId" placeholder="กรอกรหัสประจำตัว 13 หลัก" required>
+        <button type="submit" class="btn-main">ค้นหาข้อมูล</button>
+      </form>
+    </div>
+  </div>
+
+  <footer class="main-footer"> 
+    สงวนสิทธิ์ 2026 พัฒนาโดย นายดีลาภ ปราบสงบ ครูชำนาญการพิเศษ โรงเรียนบ้านคุ้ม (ประสารราษฎร์วิทยา) สพป.แพร่ เขต 1 
+  </footer>
+
+  <div class="fab" onclick="showAdminLogin()">⚙️</div>
+
+  <!-- Modal สำหรับเลือกปีงบและรอบ กรณีที่มีหลายข้อมูล -->
+  <div class="modal-overlay" id="selectRoundModal">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3 style="margin:0;">เลือกข้อมูลที่ต้องการดูผล</h3>
+        <span style="cursor:pointer; font-size:28px;" onclick="closeModal('selectRoundModal')">&times;</span>
+      </div>
+      <div class="modal-body" id="roundListContainer" style="text-align: center;">
+        <!-- ปุ่มเลือกจะถูกสร้างอัตโนมัติ -->
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="resultModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 style="margin:0;">ใบแจ้งผลการพิจารณาเลื่อนเงินเดือน</h3>
+        <span style="cursor:pointer; font-size:28px;" onclick="closeModal('resultModal')">&times;</span>
+      </div>
+      <div class="modal-body" id="printArea" style="font-family: 'Sarabun', serif; position: relative;">
+        
+        <div style="text-align: center; margin-bottom: 10px;">
+          <img id="res_logo" src="" style="max-height: 80px; display: none; margin: 0 auto;">
+        </div>
+
+        <div style="text-align:center; font-weight:bold; margin-bottom:15px; font-size: 18px;">
+          แบบแจ้งผลการพิจารณาเลื่อนเงินเดือนข้าราชการครูและบุคลากรทางการศึกษา<br>
+          ปีงบประมาณ <span id="res_fiscal_year"></span> <span id="res_round"></span><br>
+        </div>
+        
+        <div class="report-info-container">
+          <table class="report-info-table">
+            <tr>
+              <td><span class="lbl-title">รหัสประจำตัว 13 หลัก:</span> <span class="lbl-value" id="res_id"></span></td>
+              <td><span class="lbl-title">เลขที่ตำแหน่ง:</span> <span class="lbl-value" id="res_pos_num"></span></td>
+            </tr>
+            <tr>
+              <td colspan="2"><span class="lbl-title">ชื่อ-นามสกุล:</span> <span class="lbl-value" id="res_name"></span></td>
+            </tr>
+            <tr>
+              <td><span class="lbl-title">ตำแหน่ง:</span> <span class="lbl-value" id="res_pos"></span></td>
+              <td><span class="lbl-title">วิทยฐานะ:</span> <span class="lbl-value" id="res_acad"></span></td>
+            </tr>
+            <tr>
+              <td><span class="lbl-title">อันดับ:</span> <span class="lbl-value" id="res_rank"></span></td>
+              <td><span class="lbl-title">สังกัด:</span> <span class="lbl-value" id="res_school"></span></td>
+            </tr>
+          </table>
+        </div>
+
+        <table class="salary-table">
+          <tr><th style="width: 60%;">รายการ</th><th style="text-align:right;">จำนวนเงิน/ร้อยละ</th></tr>
+          <tr><td>1. เงินเดือนเดิม</td><td id="res_prev" class="highlight-prev" style="text-align:right;"></td></tr>
+          <tr><td>2. ฐานในการคำนวณ</td><td id="res_base" style="text-align:right;"></td></tr>
+          <tr><td>3. ร้อยละที่ได้เลื่อน</td><td id="res_percent" class="highlight-perc" style="text-align:right;"></td></tr>
+          <tr><td>4. จำนวนเงินที่ได้เลื่อน</td><td id="res_amt" class="highlight-amt" style="text-align:right;"></td></tr>
+          <tr>
+            <td style="vertical-align: middle;"><b>5. รวมเงินเดือนใหม่ที่ได้รับ</b></td>
+            <td id="res_new" class="highlight-new" style="text-align:right; vertical-align: middle;"></td>
+          </tr>
+        </table>
+
+        <p id="res_status_box" style="margin-top: 10px; font-size: 16px;">
+          <b>ผลการพิจารณา:</b> <span id="res_status_text"></span><br>
+          <b>ข้อสังเกต:</b> <span id="res_reason_text">-</span>
+        </p>
+
+        <div style="margin-top:30px; text-align:center; float:right; width:300px; position:relative;">
+          <img id="res_stamp" src="" style="position:absolute; top:40%; left:50%; transform:translate(-50%, -50%); max-height:130px; opacity:0.85; z-index:10; pointer-events:none; display:none;">
+          <div style="position:relative; z-index:1;">
+            <div style="min-height:70px;">
+              <img id="res_sig" src="" style="max-height: 70px; display: none; margin: 0 auto;">
+            </div>
+            ( <span id="res_director"></span> )<br>
+            ผู้อำนวยการสถานศึกษา<br>
+            วันที่ <span id="res_date"></span>
+          </div>
+        </div>
+        <div style="clear:both;"></div>
+
+        <div class="pdpa-note">
+          หมายเหตุ: เอกสารลับ งดเผยแพร่หรือประชาสัมพันธ์ ตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 PDPA
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button id="ackBtn" class="btn-animate" style="background:var(--orange); color:white; padding:12px 24px; margin-right:10px;">✨ คลิกเพื่อรับทราบผลเลื่อนเงินเดือน</button>
+        <button onclick="window.print()" style="background:var(--accent); color:white; padding:12px 24px;">🖨️ พิมพ์เอกสาร</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay fullscreen" id="adminModal">
+    <div class="modal-content">
+      <div class="modal-header" style="border-radius: 0;">
+        <h2 style="margin:0;">แผงควบคุมผู้ดูแลระบบ (Admin Workspace)</h2>
+        <span style="cursor:pointer; font-size:35px;" onclick="closeModal('adminModal')">&times;</span>
+      </div>
+      <div class="modal-body" style="background: #f0f2f5;">
+        <div class="tab-nav" style="background: #fff; padding: 10px 20px 0; margin: -25px -25px 25px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+          <button class="tab-btn active" onclick="switchTab('tab-dash', this)">📊 แดชบอร์ดสรุปผล</button>
+          <button class="tab-btn" onclick="switchTab('tab-form', this)">📝 จัดการข้อมูลบุคลากร</button>
+          <button class="tab-btn" onclick="switchTab('tab-settings', this)">⚙️ ตั้งค่าระบบ</button>
+        </div>
+
+        <div id="tab-dash" class="tab-pane active">
+          
+          <!-- ส่วนตัวกรองข้อมูล -->
+          <div style="background: #fff; padding: 15px 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 15px;">
+            <div style="font-weight: bold; color: var(--primary);">ตัวกรองข้อมูล:</div>
+            <div>
+              <label>ปีงบประมาณ:</label>
+              <select id="dashFiscalYear" style="width: auto; padding: 6px 15px; margin: 0;" onchange="renderDashboard()">
+                <!-- จะถูกเติมอัตโนมัติ -->
+              </select>
+            </div>
+            <div>
+              <label>รอบที่:</label>
+              <select id="dashRound" style="width: auto; padding: 6px 15px; margin: 0;" onchange="renderDashboard()">
+                <option value="all">ทั้งหมด (รวมทุกรอบ)</option>
+                <option value="ครั้งที่ 1 (1 เมษายน)">ครั้งที่ 1 (1 เมษายน)</option>
+                <option value="ครั้งที่ 2 (1 ตุลาคม)">ครั้งที่ 2 (1 ตุลาคม)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="dash-grid">
+            <div class="dash-card"><small>บุคลากร</small><div id="st_total">0</div></div>
+            <div class="dash-card"><small>รับทราบผลแล้ว</small><div id="st_ack" style="color: var(--success);">0</div></div>
+            <div class="dash-card"><small>คิดเป็นร้อยละ</small><div id="st_per">0%</div></div>
+            <div class="dash-card money"><small>รวมเงินเดือน (ก่อนเลื่อน)</small><div id="st_sum_prev">0 ฿</div></div>
+            <div class="dash-card money"><small>รวมเงินเดือน (หลังเลื่อน)</small><div id="st_sum_new">0 ฿</div></div>
+          </div>
+
+          <!-- กราฟเส้นโค้ง -->
+          <div style="background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px;">
+            <h3 style="margin-top:0; color: var(--primary); font-size: 16px;">📈 กราฟเส้นโค้งแนวโน้มการได้รับเงินเดือนตามวิทยฐานะ</h3>
+            <div style="height: 300px; position: relative;">
+              <canvas id="salaryChart"></canvas>
+            </div>
+          </div>
+
+          <div style="background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+              <h3 style="margin:0; color: var(--primary); font-size: 16px;">ตารางข้อมูลเงินเดือนบุคลากร</h3>
+              <div>
+                <label style="font-weight:bold; margin-right: 10px;">จัดเรียงข้อมูล:</label>
+                <select id="sortFilter" style="width: auto; padding: 8px 15px; margin:0;" onchange="renderDashboard()">
+                  <option value="default">ค่าเริ่มต้น</option>
+                  <option value="prev_asc">เงินเดือนเดิม (น้อยไปมาก)</option>
+                  <option value="perc_desc">ร้อยละที่ได้เลื่อน (มากไปน้อย)</option>
+                  <option value="new_desc">เงินเดือนใหม่ (มากไปน้อย)</option>
+                </select>
+              </div>
+            </div>
+            <div style="max-height: 50vh; overflow-y: auto; border: 1px solid #eee;">
+              <table class="status-table" id="statusTable">
+                <thead><tr><th>รหัสประจำตัว</th><th>ชื่อ-สกุล (คลิกเพื่อดูใบ)</th><th>ปีงบฯ / รอบ</th><th>เงินเดือนเดิม</th><th>% เลื่อน</th><th>เงินเดือนใหม่</th><th>สถานะ</th><th>ความพึงพอใจ</th><th>เวลาเข้าดู</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-form" class="tab-pane">
+           <div style="background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); max-width: 1000px; margin: 0 auto;">
+            <h3 style="color: var(--primary); margin-top:0; border-bottom: 2px solid #f0f2f5; padding-bottom:10px;">เพิ่ม/แก้ไข ข้อมูลการเลื่อนเงินเดือน</h3>
+            <form id="adminDataForm">
+              <div class="form-grid">
+                <div class="form-group"><label>รหัสประจำตัว</label><input type="text" id="f_id" required></div>
+                <div class="form-group"><label>ชื่อ-นามสกุล</label><input type="text" id="f_name" required></div>
+                
+                <div class="form-group"><label>ปีงบประมาณ (พ.ศ.)</label><input type="number" id="f_fiscal_year" placeholder="เช่น 2569" required></div>
+                <div class="form-group"><label>ครั้งที่เลื่อน</label>
+                  <select id="f_round">
+                    <option value="ครั้งที่ 1 (1 เมษายน)">ครั้งที่ 1 (1 เมษายน)</option>
+                    <option value="ครั้งที่ 2 (1 ตุลาคม)">ครั้งที่ 2 (1 ตุลาคม)</option>
+                  </select>
+                </div>
+
+                <div class="form-group"><label>โรงเรียน</label> 
+                  <select id="f_school">
+                    <option value="โรงเรียนบ้านคุ้ม(ประสารราษฎร์วิทยา)">โรงเรียนบ้านคุ้ม(ประสารราษฎร์วิทยา)</option>
+                    <option value="โรงเรียนบ้านวังดิน (วังดินราษฎร์บำรุง)">โรงเรียนบ้านวังดิน (วังดินราษฎร์บำรุง)</option>
+
+                  </select>
+                </div>
+                <div class="form-group"><label>ตำแหน่ง</label><input type="text" id="f_pos" value="ครู"></div>
+                <div class="form-group"><label>วิทยฐานะ</label>
+                  <select id="f_acad">
+                    <option value="ไม่มีวิทยฐานะ">ไม่มีวิทยฐานะ</option>
+                    <option value="ครูชำนาญการ">ครูชำนาญการ</option>
+                    <option value="ครูชำนาญการพิเศษ">ครูชำนาญการพิเศษ</option>
+                    <option value="ครูเชี่ยวชาญ">ครูเชี่ยวชาญ</option>
+                    <option value="ครูเชี่ยวชาญพิเศษ">ครูเชี่ยวชาญพิเศษ</option>
+                  </select>
+                </div>
+                <div class="form-group"><label>อันดับ</label>
+                  <select id="f_rank">
+                    <option value="คศ.1">คศ.1</option>
+                    <option value="คศ.2">คศ.2</option>
+                    <option value="คศ.3">คศ.3</option>
+                    <option value="คศ.4">คศ.4</option>
+                    <option value="คศ.5">คศ.5</option>
+                  </select>
+                </div>
+                <div class="form-group"><label>เลขที่ตำแหน่ง</label><input type="text" id="f_pos_num"></div>
+                <div class="form-group"><label>เงินเดือนเดิม</label><input type="number" id="f_prev"></div>
+                <div class="form-group"><label>ฐานในการคำนวณ</label><input type="number" id="f_base"></div>
+                <div class="form-group"><label>ร้อยละที่ได้เลื่อน</label><input type="text" id="f_perc"></div>
+                <div class="form-group"><label>จำนวนเงินที่ได้เลื่อน</label><input type="number" id="f_amt"></div>
+                <div class="form-group"><label>รวมเงินเดือนใหม่</label><input type="number" id="f_new"></div>
+              </div>
+              
+              <div class="form-group" style="margin-top: 15px;">
+                <label>วันที่แจ้งผล (วันเวลาปัจจุบันอัตโนมัติ)</label>
+                <input type="text" id="f_date" readonly style="background: #eee;">
+              </div>
+              <div class="form-group">
+                <label>ผลการพิจารณา</label>
+                <div class="radio-group">
+                  <label><input type="radio" name="f_status" value="มีคุณสมบัติครบ/ให้เลื่อนเงินเดือน" checked> มีคุณสมบัติครบ/ให้เลื่อนเงินเดือน</label>
+                  <label><input type="radio" name="f_status" value="ขาดคุณสมบัติ/ไม่ให้เลื่อนเงินเดือน"> ขาดคุณสมบัติ/ไม่ให้เลื่อนเงินเดือน</label>
+                </div>
+              </div>
+              <div class="form-group"><label>คำอธิบาย / ข้อสังเกต</label><textarea id="f_reason" rows="3" placeholder="ระบุเหตุผล (ถ้ามี)"></textarea></div>
+              <div style="text-align: center; margin-top: 30px;">
+                <button type="button" class="btn-main" onclick="submitAdminForm()" style="width: auto; padding: 15px 50px; font-size: 20px;">💾 บันทึก / อัพเดทข้อมูล</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div id="tab-settings" class="tab-pane">
+          <div style="background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); max-width: 700px; margin: 0 auto;">
+            <h3 style="color: var(--primary); margin-top:0;">ตั้งค่าระบบรายงาน (บันทึกรูปลง Google Drive)</h3>
+            
+            <div class="form-group" style="margin-bottom: 25px;">
+              <label>ชื่อ-นามสกุลผู้บริหาร (สำหรับประทับในรายงาน)</label>
+              <input type="text" id="set_director" placeholder="เช่น นายสมชาย ใจดี">
+            </div>
+            <div class="form-group" style="margin-bottom: 25px;">
+              <label>อัปโหลด Logo โรงเรียน (ส่วนหัวรายงาน)</label>
+              <input type="file" accept="image/png, image/jpeg" onchange="previewFile(this, 'preview_logo', 'logo')">
+              <img id="preview_logo" class="img-preview" src="">
+            </div>
+            <div class="form-group" style="margin-bottom: 25px;">
+              <label>อัปโหลดลายเซ็นผู้บริหาร (พื้นหลังใส .PNG จะดีที่สุด)</label>
+              <input type="file" accept="image/png, image/jpeg" onchange="previewFile(this, 'preview_sig', 'sig')">
+              <img id="preview_sig" class="img-preview" src="">
+            </div>
+            <div class="form-group">
+              <label>อัปโหลดตราปั๊มโรงเรียน (แสดงผลทับลายเซ็น)</label>
+              <input type="file" accept="image/png, image/jpeg" onchange="previewFile(this, 'preview_stamp', 'stamp')">
+              <img id="preview_stamp" class="img-preview" src="" style="border-radius:50%;">
+            </div>
+            <div style="margin-top:30px; text-align: center; padding-top: 20px; border-top: 1px solid #eee;">
+              <button onclick="saveSettings()" style="background:var(--success); color:white; padding:12px 35px; border-radius:8px; font-size:18px;">💾 บันทึกการตั้งค่าเข้าระบบ</button>
+            </div>
+          </div>
+        </div>
+
+     <!-- 1. นำเข้าไลบรารี SweetAlert2 (ต้องอยู่นอกแท็ก script ของเรา) -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <!-- 2. โค้ด JavaScript หลักของระบบเริ่มต้นที่นี่ -->
+  <script>
+    let currentId = '';
+    let currentRound = '';
+    let currentFiscalYear = '';
+    let dashboardDataList = []; 
+    let allSettingsLocal = {};
+    let lineChartObj = null;
+    
+    let base64Logo = '';
+    let base64Sig = '';
+    let base64Stamp = '';
+
+    window.onload = () => {
+      // เซ็ตปีงบประมาณอัตโนมัติตามปี พ.ศ. ปัจจุบัน สำหรับหน้ากรอกข้อมูล
+      document.getElementById('f_fiscal_year').value = new Date().getFullYear() + 543;
+    };
+    
+      function setNowDate() {
+      const now = new Date();
+      const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+      document.getElementById('f_date').value = now.toLocaleDateString('th-TH', options) + ' น.';
+    }
+
+    function showAdminLogin() {
+      Swal.fire({
+        title: 'ผู้ดูแลระบบ', background: '#121212', color: '#ffffff',
+        html: `<input id="swal-user" class="neon-input" placeholder="Username">
+               <input id="swal-pass" type="password" class="neon-input" placeholder="Password">`,
+        focusConfirm: false, showCancelButton: true, confirmButtonText: 'เข้าสู่ระบบ', confirmButtonColor: '#00e5ff',
+        preConfirm: () => {
+          return { user: document.getElementById('swal-user').value, pass: document.getElementById('swal-pass').value };
+        }
+      }).then((result) => {
+        if (result.isConfirmed) {
+          Swal.fire({ title: 'กำลังตรวจสอบ...', didOpen: () => Swal.showLoading() });
+          google.script.run.withSuccessHandler(() => {
+            Swal.close(); openAdminModal();
+          }).withFailureHandler(err => Swal.fire({ icon: 'error', title: 'ผิดพลาด', text: err.message, background: '#121212', color: '#ff4444' }))
+            .verifyAdminLogin(result.value.user, result.value.pass);
+        }
+      });
+    }
+
+    function displayResultData(data, settings, isAdminView = false) {
+        if (!data) return;
+        currentId = data.employee_id;
+        currentRound = data.round_name;
+        currentFiscalYear = data.fiscal_year || '-';
+        
+        const setSafeText = (id, val) => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = val || '-';
+        };
+
+        setSafeText('res_id', data.employee_id);
+        setSafeText('res_pos_num', data.position_number); 
+        setSafeText('res_name', data.full_name);
+        setSafeText('res_pos', data.position);
+        setSafeText('res_acad', data.academic_rank);
+        setSafeText('res_rank', data.rank);
+        setSafeText('res_school', data.school_name);
+        
+        setSafeText('res_prev', data.previous_salary ? Number(data.previous_salary).toLocaleString() : '-');
+        setSafeText('res_base', data.calculation_base ? Number(data.calculation_base).toLocaleString() : '-');
+        setSafeText('res_percent', data.promotion_percentage ? data.promotion_percentage + '%' : '-');
+        setSafeText('res_amt', data.promotion_amount ? Number(data.promotion_amount).toLocaleString() : '-');
+        setSafeText('res_new', data.new_salary ? Number(data.new_salary).toLocaleString() + ' บาท' : '-');
+        
+        setSafeText('res_status_text', data.status);
+        const statusEl = document.getElementById('res_status_text');
+        if(statusEl) statusEl.style.color = (data.status === 'มีคุณสมบัติครบ/ให้เลื่อนเงินเดือน') ? 'var(--success)' : 'var(--danger)';
+        
+        setSafeText('res_reason_text', data.reason);
+        setSafeText('res_round', data.round_name);
+        setSafeText('res_fiscal_year', data.fiscal_year);
+        
+        const dirName = data.director_name || settings.directorName || '-';
+        setSafeText('res_director', dirName);
+        setSafeText('res_date', data.document_date);
+        
+        const ackBtn = document.getElementById('ackBtn');
+        if(ackBtn) {
+          if(isAdminView) {
+            ackBtn.style.display = 'none';
+          } else {
+            ackBtn.style.display = 'inline-block';
+            if(data.ack_status === 'รับทราบแล้ว') {
+              ackBtn.disabled = true; ackBtn.style.background = '#9e9e9e'; 
+              ackBtn.textContent = '✅ ท่านได้รับทราบผลแล้ว';
+              ackBtn.classList.remove('btn-animate');
+            } else {
+              ackBtn.disabled = false; ackBtn.style.background = 'var(--orange)'; 
+              ackBtn.textContent = '✨ คลิกเพื่อรับทราบผลเลื่อนเงินเดือน';
+              ackBtn.classList.add('btn-animate');
+            }
+          }
+        }
+        
+        const renderImg = (elId, srcData) => {
+           const el = document.getElementById(elId);
+           if(el) {
+             if(srcData) { el.src = srcData; el.style.display = 'block'; } else { el.style.display = 'none'; }
+           }
+        }
+        renderImg('res_logo', settings.logoData);
+        renderImg('res_sig', settings.signatureData);
+        renderImg('res_stamp', settings.stampData);
+
+        document.getElementById('resultModal').style.display = 'flex';
+    }
+
+    // เมื่อบุคลากรค้นหาข้อมูล
+    document.getElementById('searchForm').onsubmit = (e) => {
+      e.preventDefault();
+      const id = document.getElementById('employeeId').value;
+      Swal.fire({ title: 'กำลังค้นหา...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+      
+      google.script.run.withSuccessHandler(response => {
+        Swal.close();
+        const records = response.records;
+        const settings = response.settings;
+        
+        if (records.length === 1) {
+            displayResultData(records[0], settings, false);
+        } else if (records.length > 1) {
+            // หากมีหลายบันทึก แสดง Modal ให้เลือกปีงบและรอบ
+            const container = document.getElementById('roundListContainer');
+            container.innerHTML = '';
+            
+            // เรียงลำดับจากล่าสุดไปเก่าสุด
+            records.sort((a, b) => b.fiscal_year - a.fiscal_year); 
+
+            records.forEach(rec => {
+                const btn = document.createElement('button');
+                btn.className = 'btn-main';
+                btn.style.margin = '10px 0';
+                btn.innerHTML = `ปีงบประมาณ ${rec.fiscal_year || '-'} <br><small>${rec.round_name}</small>`;
+                btn.onclick = () => {
+                    closeModal('selectRoundModal');
+                    displayResultData(rec, settings, false);
+                };
+                container.appendChild(btn);
+            });
+            document.getElementById('selectRoundModal').style.display = 'flex';
+        }
+      }).withFailureHandler(err => Swal.fire('ไม่พบข้อมูล', err.message, 'error')).searchEmployee(id);
+    };
+
+    document.getElementById('ackBtn').onclick = () => {
+      Swal.fire({
+        title: 'ประเมินความพึงพอใจ',
+        text: 'โปรดเลือกความรู้สึกของท่านที่มีต่อผลการพิจารณา',
+        icon: 'question',
+        showDenyButton: true, showCancelButton: true,
+        confirmButtonText: '😍 พอใจมาก', denyButtonText: '😊 พอใจ', cancelButtonText: '☹️ ไม่ยอมรับผล',
+        confirmButtonColor: '#2e7d32', denyButtonColor: '#fb8c00', cancelButtonColor: '#d32f2f'
+      }).then((result) => {
+        let rating = '';
+        if (result.isConfirmed) rating = 'พอใจมาก';
+        else if (result.isDenied) rating = 'พอใจ';
+        else if (result.dismiss === Swal.DismissReason.cancel) rating = 'ไม่ยอมรับผล';
+        
+        if (rating) {
+          Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+          google.script.run.withSuccessHandler(() => {
+            Swal.fire('สำเร็จ!', 'บันทึกการรับทราบผลเรียบร้อยแล้ว', 'success');
+            const ackBtn = document.getElementById('ackBtn');
+            ackBtn.disabled = true;
+            ackBtn.classList.remove('btn-animate');
+            ackBtn.style.background = '#9e9e9e';
+            ackBtn.textContent = '✅ ท่านได้รับทราบผลแล้ว';
+          }).acknowledgeResult(currentId, currentRound, currentFiscalYear, rating);
+        }
+      });
+    };
+
+    // เปิดดูรายงานจากฝั่ง Admin
+    function viewReportFromAdmin(empId, rName, fYear) {
+      Swal.fire({ title: 'กำลังโหลดข้อมูล...', didOpen: () => Swal.showLoading() });
+      google.script.run
+        .withSuccessHandler(response => {
+          Swal.close();
+          const rec = response.records.find(r => r.round_name === rName && r.fiscal_year == fYear) || response.records[0];
+          displayResultData(rec, response.settings, true);
+        })
+        .withFailureHandler(err => Swal.fire('ผิดพลาด', err.message, 'error'))
+        .searchEmployee(empId);
+    }
+
+    function openAdminModal() {
+      document.getElementById('adminModal').style.display = 'flex';
+      setNowDate();
+      loadDashboard();
+      
+      google.script.run.withSuccessHandler(set => {
+        allSettingsLocal = set;
+        document.getElementById('set_director').value = set.directorName || '';
+        if(set.logoData) { document.getElementById('preview_logo').src = set.logoData; document.getElementById('preview_logo').style.display = 'block'; }
+        if(set.signatureData) { document.getElementById('preview_sig').src = set.signatureData; document.getElementById('preview_sig').style.display = 'block'; }
+        if(set.stampData) { document.getElementById('preview_stamp').src = set.stampData; document.getElementById('preview_stamp').style.display = 'block'; }
+        base64Logo = ''; base64Sig = ''; base64Stamp = ''; 
+      }).getAdminSettingsPreview();
+    }
+
+    function loadDashboard() {
+      google.script.run.withSuccessHandler(s => {
+        dashboardDataList = s.list;
+        
+        // ดึงปีงบประมาณที่ไม่ซ้ำออกมา และใส่ใน Dropdown ตัวกรอง
+        const years = [...new Set(dashboardDataList.map(item => item.fiscal_year).filter(y => y && y !== 'ไม่ระบุ'))].sort().reverse();
+        const yearSelect = document.getElementById('dashFiscalYear');
+        
+        if (years.length > 0) {
+            yearSelect.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+            // เซ็ตเป็นปีล่าสุดและรอบล่าสุดที่มีโดยอัตโนมัติ
+            yearSelect.value = years[0]; 
+            const roundsThisYear = dashboardDataList.filter(item => item.fiscal_year == years[0]).map(item => item.round);
+            const roundSelect = document.getElementById('dashRound');
+            if(roundsThisYear.includes('ครั้งที่ 2 (1 ตุลาคม)')) roundSelect.value = 'ครั้งที่ 2 (1 ตุลาคม)';
+            else if (roundsThisYear.includes('ครั้งที่ 1 (1 เมษายน)')) roundSelect.value = 'ครั้งที่ 1 (1 เมษายน)';
+        } else {
+            yearSelect.innerHTML = '<option value="all">ทั้งหมด</option>';
+        }
+
+        renderDashboard();
+      }).getAdminDashboardData();
+    }
+
+    // ฟังก์ชันคำนวณสถิติและเรนเดอร์ตาราง + กราฟ 
+    function renderDashboard() {
+      const fYear = document.getElementById('dashFiscalYear').value;
+      const fRound = document.getElementById('dashRound').value;
+      const sortType = document.getElementById('sortFilter').value;
+      
+      // กรองข้อมูลตามที่เลือก
+      let displayList = dashboardDataList.filter(item => {
+          let match = true;
+          if(fYear !== 'all' && item.fiscal_year != fYear) match = false;
+          if(fRound !== 'all' && item.round != fRound) match = false;
+          return match;
+      });
+
+      // คำนวณสถิติ
+      let ackCount = 0, sumPrev = 0, sumNew = 0;
+      displayList.forEach(item => {
+          sumPrev += item.prev_salary;
+          sumNew += item.new_salary;
+          if(item.status === 'รับทราบแล้ว') ackCount++;
+      });
+      const totalCount = displayList.length;
+      const per = totalCount > 0 ? ((ackCount / totalCount) * 100).toFixed(2) : 0;
+      
+      document.getElementById('st_total').textContent = totalCount;
+      document.getElementById('st_ack').textContent = ackCount;
+      document.getElementById('st_per').textContent = per + '%';
+      document.getElementById('st_sum_prev').textContent = Number(sumPrev).toLocaleString() + ' ฿';
+      document.getElementById('st_sum_new').textContent = Number(sumNew).toLocaleString() + ' ฿';
+
+      // จัดเรียง
+      if(sortType === 'prev_asc') displayList.sort((a,b) => a.prev_salary - b.prev_salary);
+      else if (sortType === 'perc_desc') displayList.sort((a,b) => b.percentage - a.percentage);
+      else if (sortType === 'new_desc') displayList.sort((a,b) => b.new_salary - a.new_salary);
+
+      // เรนเดอร์ตาราง
+      const tbody = document.querySelector('#statusTable tbody');
+      tbody.innerHTML = '';
+      displayList.forEach(item => {
+        const statusColor = item.status === 'รับทราบแล้ว' ? 'color:var(--success);' : 'color:var(--danger);';
+        let satColor = '#333';
+        if(item.satisfaction === 'พอใจมาก') satColor = 'color:var(--success); font-weight:bold;';
+        if(item.satisfaction === 'พอใจ') satColor = 'color:var(--orange); font-weight:bold;';
+        if(item.satisfaction === 'ไม่ยอมรับผล') satColor = 'color:var(--danger); font-weight:bold;';
+        
+        let roundShort = item.round.includes('1') ? 'รอบ 1' : (item.round.includes('2') ? 'รอบ 2' : item.round);
+
+        tbody.innerHTML += `<tr>
+          <td>${item.id}</td>
+          <td><a onclick="viewReportFromAdmin('${item.id}', '${item.round}', '${item.fiscal_year}')">${item.name}</a></td>
+          <td>${item.fiscal_year} / ${roundShort}</td>
+          <td>${Number(item.prev_salary).toLocaleString()}</td>
+          <td style="color:var(--orange); font-weight:bold;">${item.percentage}%</td>
+          <td style="font-weight:bold;">${Number(item.new_salary).toLocaleString()}</td>
+          <td style="${statusColor} font-weight:bold;">${item.status}</td>
+          <td style="${satColor}">${item.satisfaction}</td>
+          <td>${item.time}</td>
+        </tr>`;
+      });
+
+      renderChart(displayList);
+    }
+
+    function renderChart(list) {
+      const ctx = document.getElementById('salaryChart').getContext('2d');
+      
+      // จัดกลุ่มเงินเดือนเฉลี่ยตามวิทยฐานะ
+      const rankMap = {};
+      list.forEach(item => {
+          const rank = item.academic_rank || 'ไม่มีวิทยฐานะ';
+          if(!rankMap[rank]) rankMap[rank] = { sum: 0, count: 0 };
+          rankMap[rank].sum += item.new_salary;
+          rankMap[rank].count += 1;
+      });
+      
+      // กำหนดลำดับวิทยฐานะให้ถูกต้อง
+      const order = ['ไม่มีวิทยฐานะ', 'ครูชำนาญการ', 'ครูชำนาญการพิเศษ', 'ครูเชี่ยวชาญ', 'ครูเชี่ยวชาญพิเศษ'];
+      const labels = Object.keys(rankMap).sort((a, b) => order.indexOf(a) - order.indexOf(b));
+      const dataValues = labels.map(label => rankMap[label].sum / rankMap[label].count);
+      
+      if(lineChartObj) lineChartObj.destroy();
+      
+      lineChartObj = new Chart(ctx, {
+          type: 'line',
+          data: {
+              labels: labels,
+              datasets: [{
+                  label: 'เงินเดือนใหม่ (เฉลี่ย) แยกตามวิทยฐานะ',
+                  data: dataValues,
+                  borderColor: '#e91e63',
+                  backgroundColor: 'rgba(233, 30, 99, 0.1)',
+                  pointBackgroundColor: '#1a237e',
+                  pointBorderColor: '#fff',
+                  pointHoverBackgroundColor: '#fff',
+                  pointHoverBorderColor: '#1a237e',
+                  pointRadius: 6,
+                  pointHoverRadius: 8,
+                  borderWidth: 3,
+                  tension: 0.4, 
+                  fill: true
+              }]
+          },
+          options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                  y: { beginAtZero: false, ticks: { callback: function(value) { return Number(value).toLocaleString() + ' ฿'; } } }
+              },
+              plugins: {
+                  tooltip: {
+                      callbacks: {
+                          label: function(context) { return 'เฉลี่ย: ' + Number(context.raw).toLocaleString() + ' บาท'; }
+                      }
+                  }
+              }
+          }
+      });
+    }
+
+    function submitAdminForm() {
+      const statusRadio = document.querySelector('input[name="f_status"]:checked').value;
+      const data = {
+        employee_id: document.getElementById('f_id').value, 
+        full_name: document.getElementById('f_name').value,
+        school_name: document.getElementById('f_school').value, 
+        position: document.getElementById('f_pos').value,
+        academic_rank: document.getElementById('f_acad').value, 
+        rank: document.getElementById('f_rank').value,
+        position_number: document.getElementById('f_pos_num').value,
+        previous_salary: document.getElementById('f_prev').value, 
+        calculation_base: document.getElementById('f_base').value,
+        promotion_percentage: document.getElementById('f_perc').value, 
+        promotion_amount: document.getElementById('f_amt').value,
+        new_salary: document.getElementById('f_new').value, 
+        round_name: document.getElementById('f_round').value,
+        fiscal_year: document.getElementById('f_fiscal_year').value, // เพิ่มฟิลด์ปีงบประมาณ
+        document_date: document.getElementById('f_date').value, 
+        status: statusRadio, 
+        reason: document.getElementById('f_reason').value
+      };
+      
+      if(!data.employee_id || !data.full_name || !data.fiscal_year) return Swal.fire('แจ้งเตือน', 'กรุณากรอกรหัสประจำตัว ชื่อ-สกุล และปีงบประมาณ', 'warning');
+
+      Swal.fire({title: 'กำลังบันทึก...', didOpen:()=>Swal.showLoading()});
+      google.script.run.withSuccessHandler(msg => {
+        Swal.fire('สำเร็จ', msg, 'success');
+        document.getElementById('adminDataForm').reset();
+        document.getElementById('f_fiscal_year').value = new Date().getFullYear() + 543; // เซ็ตค่าคืน
+        setNowDate(); loadDashboard();
+      }).saveEmployeeData(data);
+    }
+
+    function switchTab(tabId, btn) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      btn.classList.add('active');
+      if(tabId === 'tab-dash') loadDashboard();
+    }
+
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    function previewFile(input, previewId, type) {
+      if (input.files && input.files[0]) {
+        const file = input.files[0];
+        if(file.size > 2000000) {
+          Swal.fire('ขนาดไฟล์ใหญ่เกินไป', 'กรุณาอัปโหลดภาพขนาดไม่เกิน 2MB เพื่อความรวดเร็ว', 'warning');
+          input.value = ''; return;
+        }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const result = e.target.result;
+          document.getElementById(previewId).src = result;
+          document.getElementById(previewId).style.display = 'block';
+          
+          if(type === 'logo') base64Logo = result;
+          if(type === 'sig') base64Sig = result;
+          if(type === 'stamp') base64Stamp = result;
+        }
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function saveSettings() {
+      const payload = {
+        directorName: document.getElementById('set_director').value,
+        logo: base64Logo,
+        signature: base64Sig,
+        stamp: base64Stamp
+      };
+
+      Swal.fire({title: 'กำลังอัปโหลดขึ้น Drive...', text:'ระบบกำลังจัดเก็บรูปลงในโฟลเดอร์', didOpen:()=>Swal.showLoading()});
+      google.script.run.withSuccessHandler(msg => {
+        Swal.fire('สำเร็จ', msg, 'success');
+        base64Logo = ''; base64Sig = ''; base64Stamp = ''; 
+      }).saveAdminSettings(payload);
+    }
+  </script>
+</body>
+</html>
